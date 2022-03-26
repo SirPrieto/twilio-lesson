@@ -9,6 +9,9 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User
+from datastructure import Queue
+from sendtext import send
+
 #from models import Person
 
 app = Flask(__name__)
@@ -20,6 +23,8 @@ db.init_app(app)
 CORS(app)
 setup_admin(app)
 
+queue = Queue()
+
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
@@ -30,11 +35,46 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
 
+
+@app.route('/new', methods=['POST'])
+def post_enqueue():
+    guest = request.json
+    size = queue.size()
+    queue.enqueue(guest)
     response_body = {
-        "msg": "Hello, this is your GET /user response "
+        "msg": f"Hello {guest['name']}, your are beed added to the queue and have {size} pople in front you  "
+    }
+
+    return jsonify(response_body), 200
+
+
+
+
+
+@app.route('/next', methods=['GET'])
+def get_dequeue():
+    if queue.size():
+        next = queue.dequeue()
+        send(body=f"{next['name']},", to=next['phone'])
+        response_body = {
+            "msg": f"Hello {next['name']}, you table is ready"
+        }
+        return jsonify(response_body), 200
+       
+    else: 
+        response_body = {
+            "msg": "This queue is empty"
+        }
+        return jsonify(response_body), 200
+
+
+@app.route('/all', methods=['GET'])
+def get_allqueue():
+    guest = request.json
+    all = queue.get_queue()
+    response_body = {
+        "msg": f"This all the people on queue {all}"
     }
 
     return jsonify(response_body), 200
